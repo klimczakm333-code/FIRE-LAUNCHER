@@ -1,7 +1,7 @@
 
 {
   "name": "firelauncher",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "FIRE LAUNCHER - Minecraft Java Launcher",
   "main": "main.js",
   "scripts": {
