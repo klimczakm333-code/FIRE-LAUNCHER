@@ -1,77 +1,126 @@
-const { ipcRenderer } = require('electron');
 
-window.addEventListener('DOMContentLoaded', () => {
-  const playButton = document.querySelector('#play');
-  const versionSelect = document.querySelector('#version');
+const { ipcRenderer } = require("electron");
 
+window.addEventListener("DOMContentLoaded", () => {
+  const playButton = document.querySelector("#play");
+  const loginButton = document.querySelector("#login");
+  const versionSelect = document.querySelector("#version");
+  const status = document.querySelector("#status");
+
+  function setStatus(message) {
+    if (status) status.textContent = message;
+  }
+
+  // PLAY — uruchamianie Minecrafta
   if (playButton) {
-    playButton.addEventListener('click', () => {
-      const version = versionSelect ? versionSelect.value : '1.8.9';
+    playButton.addEventListener("click", () => {
+      const version = versionSelect?.value;
 
-      ipcRenderer.send('launch-minecraft', version);
+      if (!version) {
+        setStatus("Wybierz wersję Minecrafta.");
+        return;
+      }
+
+      playButton.disabled = true;
+      setStatus(`Uruchamianie Minecrafta ${version}...`);
+      ipcRenderer.send("launch-minecraft", version);
     });
   }
-});
-const loginButton = document.querySelector('#login');
 
-if (loginButton) {
-  loginButton.addEventListener('click', () => {
-    ipcRenderer.send('microsoft-login');
-  });
-}
-ipcRenderer.on('login-success', () => {
-  const loginButton = document.querySelector('#login');
-
+  // Logowanie Microsoft
   if (loginButton) {
-    loginButton.style.display = 'none';
-  }
-});
-
-ipcRenderer.send('check-login-session');
-window.addEventListener('DOMContentLoaded', async () => {
-  const versionSelect = document.querySelector('#version');
-
-  if (!versionSelect) {
-    console.error('Nie znaleziono listy wersji Minecrafta.');
-    return;
+    loginButton.addEventListener("click", () => {
+      loginButton.disabled = true;
+      setStatus("Otwieranie logowania Microsoft...");
+      ipcRenderer.send("microsoft-login");
+    });
   }
 
-  const previousVersion = versionSelect.value;
-
-  try {
-    const response = await fetch(
-      'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'
-    );
-
-    if (!response.ok) {
-      throw new Error('Nie udało się pobrać listy wersji.');
+  // Wynik logowania lub przywrócenia sesji
+  ipcRenderer.on("login-success", () => {
+    if (loginButton) {
+      loginButton.disabled = true;
+      loginButton.textContent = "Zalogowano przez Microsoft";
     }
 
-    const manifest = await response.json();
-    const releases = manifest.versions.filter(
-      version => version.type === 'release'
-    );
+    setStatus("Konto Microsoft połączone. Możesz grać!");
+  });
 
-    versionSelect.replaceChildren();
+  ipcRenderer.on("login-error", (_event, message) => {
+    if (loginButton) loginButton.disabled = false;
+    setStatus("Błąd logowania: " + message);
+  });
 
-    for (const release of releases) {
-      const option = document.createElement('option');
-      option.value = release.id;
-      option.textContent =
-        release.id +
-        (release.id === manifest.latest.release ? ' (najnowsza)' : '');
+  ipcRenderer.on("login-session-missing", () => {
+    if (loginButton) loginButton.disabled = false;
+    setStatus("Zaloguj się przez Microsoft, aby rozpocząć grę.");
+  });
 
-      versionSelect.appendChild(option);
+  ipcRenderer.on("login-session-error", (_event, message) => {
+    if (loginButton) loginButton.disabled = false;
+    setStatus("Błąd przywracania sesji: " + message);
+  });
+
+  // Wynik uruchamiania Minecrafta
+  ipcRenderer.on("minecraft-launch-error", (_event, message) => {
+    if (playButton) playButton.disabled = false;
+    setStatus("Błąd Minecrafta: " + message);
+  });
+
+  ipcRenderer.on("minecraft-launch-started", () => {
+    if (playButton) playButton.disabled = false;
+    setStatus("Wysłano polecenie uruchomienia Minecrafta.");
+  });
+
+  // Pobieranie oficjalnych wersji Minecrafta
+  async function loadVersions() {
+    if (!versionSelect) return;
+
+    const previousVersion = versionSelect.value;
+
+    try {
+      const response = await fetch(
+        "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
+      );
+
+      if (!response.ok) {
+        throw new Error("Nie udało się pobrać listy wersji.");
+      }
+
+      const manifest = await response.json();
+      const releases = manifest.versions.filter(
+        version => version.type === "release"
+      );
+
+      versionSelect.replaceChildren();
+
+      for (const release of releases) {
+        const option = document.createElement("option");
+        option.value = release.id;
+        option.textContent =
+          release.id +
+          (release.id === manifest.latest.release ? " (najnowsza)" : "");
+
+        versionSelect.appendChild(option);
+      }
+
+      if (releases.some(version => version.id === previousVersion)) {
+        versionSelect.value = previousVersion;
+      } else {
+        versionSelect.value = manifest.latest.release;
+      }
+
+      console.log("Pobrano oficjalne wersje Minecrafta:", releases.length);
+      setStatus("Gotowy do gry!");
+    } catch (error) {
+      console.error("Błąd pobierania wersji:", error);
+      setStatus("Nie udało się pobrać listy wersji Minecrafta.");
     }
-
-    if (releases.some(version => version.id === previousVersion)) {
-      versionSelect.value = previousVersion;
-    } else {
-      versionSelect.value = manifest.latest.release;
-    }
-
-    console.log('Pobrano oficjalne wersje Minecrafta:', releases.length);
-  } catch (error) {
-    console.error('Błąd pobierania wersji:', error);
   }
+
+  // Najpierw instalujemy obsługę zdarzeń, a dopiero potem sprawdzamy sesję.
+  setStatus("Sprawdzanie konta Microsoft...");
+  ipcRenderer.send("check-login-session");
+
+  loadVersions();
 });
