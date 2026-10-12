@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>FIRE LAUNCHER</title>
+<style>
+body {
+  background: #101010;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding-top: 100px;
+}
+h1 {
+  color: #ff5722;
+  font-size: 45px;
+}
+select, button {
+  padding: 15px;
+  margin: 12px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+button {
+  background: #ff5722;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+  <h1>🔥 FIRE LAUNCHER</h1>
+  <p>Twoja gra. Twoje zasady.</p>
+
+  <select id="version">
+    <option value="1.8.9">1.8.9</option>
+    <option>1.12.2</option>
+    <option>1.16.5</option>
+    <option>1.20.1</option>
+    <option>1.21.10</option>
+  </select>
+
+  <br>
+  <button id="play" onclick="document.getElementById('status').textContent =
+    'Wybrano Minecraft ' +
+    document.getElementById('version').value">
+    PLAY
+  </button>
+  <button id="login">zaloguj sie przez microsoft</button>
+
+  <p id="status">Gotowy do gry!</p>
+<script src="renderer.js"></script>
+</body>
+</html>
